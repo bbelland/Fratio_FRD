@@ -43,11 +43,22 @@ class FRDsolver(object):
         if not isinstance(imagetosolve,np.ndarray):
             raise Exception('imagetosolve should be a np.ndarray')
             
-        for image in knownimagelist:
-            if np.shape(image) != np.shape(imagetosolve):
-                raise Exception('The input images of known FRD should have the same ' +
-                                'dimensions as the image to solve.') 
-
+        if not ((len(np.shape(knownimagelist)) == 3) and (len(np.shape(imagetosolve)) == 2)) \
+            or ((len(np.shape(knownimagelist)) == 4) and (len(np.shape(imagetosolve)) == 3)):
+            raise Exception('Dimension of knownimage list must be 2 or 3, and one less than imagetosolve')
+        
+        if len(np.shape(knownimagelist)) == 3: #2D image x FRD
+            for image in knownimagelist:
+                if np.shape(image) != np.shape(imagetosolve):
+                    raise Exception('The input images of known FRD should have the same ' +
+                                    'dimensions as the image to solve.') 
+                    
+        elif len(np.shape(knownimagelist)) == 4: #2D image x FRD x Positions
+            for position in range(len(knownimagelist)):
+                for image in knownimagelist[position]:
+                    if np.shape(image) != np.shape(imagetosolve[0]):
+                        raise Exception('The input images of known FRD should have the same ' +
+                                        'dimensions as the image to solve.') 
         #self._recenter_imagelist()
 
     def _recenter_image(self,image,centertoshiftto):
@@ -86,59 +97,46 @@ class FRDsolver(object):
         currentimage = imagetosolve 
         modeltocompare = guessimage 
         varimage = varianceimage
-        showplt = False
             
-        centery, centerx = center_of_mass(currentimage) #Determine the center of the PSF. Ordered y, x as
-        #it would appear in imshow() but most important thing is to be consistent with ordering
-        centery = int(np.round(centery)) #Rounded to permit easier pixel selection.
-        centerx = int(np.round(centerx))
         
-        #print('The found values of centery, centerx are: ')
-        #print(centery, centerx)
+        if len(np.shape(imagetosolve)) == 3: #E.G. multiple positions given
+            
+            for positioninput in range(len(imagetosolve)):
+                positionvaltemp = 0
+                positionimage = currentimage[positioninput]
+                positionvar = varianceimage[positioninput]
+                centery, centerx = center_of_mass(positionimage) #Determine the center of the PSF. Ordered y, x as
+                #it would appear in imshow() but most important thing is to be consistent with ordering
+                centery = int(np.round(centery)) #Rounded to permit easier pixel selection.
+                centerx = int(np.round(centerx))
+                
+                residualvaltemp += np.sum(np.divide(np.square(positionimage[(centery-3):(centery+3),(centerx-3):(centerx+3)]
+                                                  - modeltocompare[(centery-3):(centery+3),(centerx-3):(centerx+3)]),
+                                        (positionvar[(centery-3):(centery+3),(centerx-3):(centerx+3)])))*np.sqrt(2)
         
-        if showplt: #Code generally should not output plots, but for debug/step-by-step analysis, the plot
-            #is available. Note that showplt is a variable defined in this function, not an argument,
-            #since it isn't intended to be generally used.
+                residualvaltemp -= np.sum(np.divide(np.square(positionimage[(centery-1):(centery+1),(centerx-1):(centerx+1)] - 
+                                                  modeltocompare[(centery-1):(centery+1),(centerx-1):(centerx+1)]), 
+                                        (position[(centery-1):(centery+1),(centerx-1):(centerx+1)])))*np.sqrt(2)
+
+                residualval += residualvaltemp/40 #Number of pixels in the calculation        
         
-            plt.imshow(currentimage[(centery-3):(centery+3),(centerx-3):(centerx+3)])
-            plt.title('Outer mask selection in the input (non-simulated) image')
-            plt.show()
-            
-            plt.imshow(modeltocompare[(centery-3):(centery+3),(centerx-3):(centerx+3)])
-            plt.title('Outer mask selection in the comparison (simulated) image')
-            plt.show()
-            
-            plt.imshow(varimage[(centery-3):(centery+3),(centerx-3):(centerx+3)])
-            plt.colorbar()
-            plt.title('Variance image in model range')
-            plt.show()
-            
-            plt.imshow(currentimage[(centery-3):(centery+3),(centerx-3):(centerx+3)]
-                       - modeltocompare[(centery-3):(centery+3),(centerx-3):(centerx+3)],
-                       cmap='bwr',vmax=500,vmin=-500)
-            plt.colorbar()
-            plt.title('Difference image between input and comparison')
-            plt.show()        
-            
-            plt.imshow(np.divide(np.sqrt(2)*np.square(currentimage[(centery-3):(centery+3),(centerx-3):(centerx+3)]
-                                                      - modeltocompare[(centery-3):(centery+3),(centerx-3):(centerx+3)]),
-                                                     (varimage[(centery-3):(centery+3),(centerx-3):(centerx+3)])))
-            plt.colorbar()
-            plt.title('Chi square in each pixel')# is {}'.format())
-            plt.show()
-    
-            
-        #print('Added to residual val: ')
-        
-        residualval += np.sum(np.divide(np.square(currentimage[(centery-3):(centery+3),(centerx-3):(centerx+3)]
+        elif len(np.shape(imagetosolve)) == 2:
+            centery, centerx = center_of_mass(currentimage) #Determine the center of the PSF. Ordered y, x as
+            #it would appear in imshow() but most important thing is to be consistent with ordering
+            centery = int(np.round(centery)) #Rounded to permit easier pixel selection.
+            centerx = int(np.round(centerx))
+            residualval += np.sum(np.divide(np.square(currentimage[(centery-3):(centery+3),(centerx-3):(centerx+3)]
                                                   - modeltocompare[(centery-3):(centery+3),(centerx-3):(centerx+3)]),
                                         (varianceimage[(centery-3):(centery+3),(centerx-3):(centerx+3)])))*np.sqrt(2)
         
-        residualval -= np.sum(np.divide(np.square(currentimage[(centery-1):(centery+1),(centerx-1):(centerx+1)] - 
+            residualval -= np.sum(np.divide(np.square(currentimage[(centery-1):(centery+1),(centerx-1):(centerx+1)] - 
                                                   modeltocompare[(centery-1):(centery+1),(centerx-1):(centerx+1)]), 
                                         (varianceimage[(centery-1):(centery+1),(centerx-1):(centerx+1)])))*np.sqrt(2)
 
-        residualval = residualval/40 #Number of pixels in the calculation
+            residualval = residualval/40 #Number of pixels in the calculation
+        
+        else:
+            raise Exception('Dimension of imagetosolve is not valid')
         
         return residualval            
             
