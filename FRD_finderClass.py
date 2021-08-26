@@ -261,31 +261,3 @@ class FRD_finder(object):
             plt.colorbar()
             plt.title('Position: {}'.format(positionindex))
             plt.show()
-
-
-def generate_image_of_known_FRD_vartrue(imagetosolve,arrayofFRD,positionvalue,varimage,element,base_DIRECTORY,datefinal):
-    imagearrayofFRD = []
-    for FRD in arrayofFRD:
-        newimage = get_model_image_compare_position_vartrue(imagetosolve,FRD,positionvalue,varimage,
-                                                            element,base_DIRECTORY,datefinal)
-        imagearrayofFRD.append(newimage)
-    return imagearrayofFRD
-                             
-def get_model_image_compare_position_vartrue(science_image,FRDval,position,var,element,base_DIRECTORY,datefinal):
-    #if isinstance(science_image[0][0],list):
-    #    print(science_image)
-    wavelength_at_position = get_wavelength(element,position,base_DIRECTORY,datefinal)
-    
-    model4 = LN_PFS_single(science_image,var,dithering=1,save=0,zmax=56,verbosity=0,
-                           npix=1536,fit_for_flux=True,wavelength=get_wavelength(element,position))
-
-    res=model4(get_PSF_parameters_trueread(FRDval,position,element),return_Image=True)
-
-    In_focus = res[1] #This argument of the get_PSF_parameters is the detector image
-    
-    return (In_focus)
-
-def get_wavelength(element,position,base_DIRECTORY,datefinal):
-    #base_DIRECTORY='/Users/brentbelland/Desktop/FRD_Image_Analysis/'
-    finalfile = np.load(base_DIRECTORY + "final" + element + "_" + datefinal,allow_pickle=True)
-    return float(finalfile.loc[position]['wavelength'])                                  
