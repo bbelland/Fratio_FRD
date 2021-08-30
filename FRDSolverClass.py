@@ -43,9 +43,9 @@ class FRDsolver(object):
         if not isinstance(imagetosolve,np.ndarray):
             raise Exception('imagetosolve should be a np.ndarray')
             
-        if not ((len(np.shape(knownimagelist)) == 3) and (len(np.shape(imagetosolve)) == 2)) \
-            or ((len(np.shape(knownimagelist)) == 4) and (len(np.shape(imagetosolve)) == 3)):
-            raise Exception('Dimension of knownimage list must be 2 or 3, and one less than imagetosolve')
+        if not (((len(np.shape(knownimagelist)) == 3) and (len(np.shape(imagetosolve)) == 2)) 
+            or ((len(np.shape(knownimagelist)) == 4) and (len(np.shape(imagetosolve)) == 3))):
+            raise Exception('Dimension of imagetosolve list must be 2 or 3, and one less than imagetosolve')
         
         if len(np.shape(knownimagelist)) == 3: #2D image x FRD
             for image in knownimagelist:
@@ -81,7 +81,8 @@ class FRDsolver(object):
     def _checklengths(self, FRDlist, knownimagelist):
         "Verifies that the FRD inputs match the inputted images"
         
-        if not len(FRDlist) == len(knownimagelist):
+        knownimagedimension = np.shape(knownimagelist)
+        if not len(FRDlist) == knownimagedimension[2]:
             raise Exception('The length of FRDlist is not equal to the length of knownimagelist. ' + 
                             'Make sure each image has a corresponding FRD.')
             
@@ -102,7 +103,7 @@ class FRDsolver(object):
         if len(np.shape(imagetosolve)) == 3: #E.G. multiple positions given
             
             for positioninput in range(len(imagetosolve)):
-                positionvaltemp = 0
+                residualvaltemp = 0
                 positionimage = currentimage[positioninput]
                 positionvar = varianceimage[positioninput]
                 centery, centerx = center_of_mass(positionimage) #Determine the center of the PSF. Ordered y, x as
